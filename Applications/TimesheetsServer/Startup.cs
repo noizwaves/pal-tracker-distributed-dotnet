@@ -1,14 +1,19 @@
 ﻿using System;
 using System.Net.Http;
+using AuthDisabler;
 using DatabaseSupport;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Pivotal.Discovery.Client;
 using Steeltoe.CircuitBreaker.Hystrix;
 using Steeltoe.Common.Discovery;
+using Steeltoe.Security.Authentication.CloudFoundry;
 using Timesheets;
 
 namespace TimesheetsServer
@@ -31,21 +36,34 @@ namespace TimesheetsServer
             services.AddSingleton<IDataSourceConfig, DataSourceConfig>();
             services.AddSingleton<IDatabaseTemplate, DatabaseTemplate>();
             services.AddSingleton<ITimeEntryDataGateway, TimeEntryDataGateway>();
-            
+
             services.AddSingleton<IProjectClient>(sp =>
             {
                 var handler = new DiscoveryHttpClientHandler(sp.GetService<IDiscoveryClient>());
+                var contextAccessor = sp.GetService<IHttpContextAccessor>();
                 var httpClient = new HttpClient(handler, false)
                 {
                     BaseAddress = new Uri(Configuration.GetValue<string>("REGISTRATION_SERVER_ENDPOINT"))
                 };
 
                 var logger = sp.GetService<ILogger<ProjectClient>>();
-                return new ProjectClient(httpClient, logger);
+                return new ProjectClient(httpClient, logger,
+                    () => contextAccessor.HttpContext.GetTokenAsync("access_token"));
             });
 
             services.AddDiscoveryClient(Configuration);
             services.AddHystrixMetricsStream(Configuration);
+
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddCloudFoundryJwtBearer(Configuration);
+
+            services.AddAuthorization(options =>
+                options.AddPolicy("pal-tracker", policy => policy.RequireClaim("scope", "uaa.resource")));
+
+            if (Configuration.GetValue("DISABLE_AUTH", false))
+            {
+                services.DisableClaimsVerification();
+            }
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -54,6 +72,7 @@ namespace TimesheetsServer
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
 
+            app.UseAuthentication();
             app.UseMvc();
             app.UseDiscoveryClient();
             app.UseHystrixMetricsStream();

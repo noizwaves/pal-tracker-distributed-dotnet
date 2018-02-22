@@ -60,10 +60,7 @@ namespace TimesheetsServer
             services.AddAuthorization(options =>
                 options.AddPolicy("pal-tracker", policy => policy.RequireClaim("scope", "uaa.resource")));
 
-            if (Configuration.GetValue("DISABLE_AUTH", false))
-            {
-                services.DisableClaimsVerification();
-            }
+            services.DisableClaimsVerification(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

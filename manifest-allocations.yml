@@ -6,8 +6,11 @@ applications:
   memory: 256M
   host: allocations-pal-an
   path: Applications/AllocationsServer/bin/Release/netcoreapp2.0/publish
+  env:
+    DISABLE_AUTH: true
   services:
   - tracker-allocations-database
   - tracker-service-registry
   - tracker-circuit-breaker-dashboard
   - tracker-amqp
+  - tracker-config-server

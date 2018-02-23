@@ -18,5 +18,22 @@
             "name": "tracker-database",
             "tags": ["mysql", "relational"]
         }
-    ]
+    ],
+    "p-config-server": [
+        {
+            "credentials": {
+                "uri": "http://localhost:8777"
+            },
+            "label": "p-config-server",
+            "name": "tracker-config-server",
+            "plan": "standard",
+            "provider": null,
+            "syslog_drain_url": null,
+            "tags": [
+                "configuration",
+                "spring-cloud"
+            ],
+            "volume_mounts": []
+        }
+    ],
 }
